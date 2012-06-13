@@ -92,6 +92,12 @@ module EY
         @instances ||= request_instances
       end
 
+      def boot_instance(instance_attrs)
+        instance = Instance.create(api, instance_attrs.merge('environment_id' => id))
+        add_instance(instance)
+        instance
+      end
+
       def account_name
         account && account.name
       end

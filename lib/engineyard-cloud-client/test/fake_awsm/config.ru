@@ -117,6 +117,12 @@ class FakeAwsm < Sinatra::Base
     render :rabl, :instances, :format => "json"
   end
 
+  post "/api/v2/environments/:env_id/instances" do
+    environment = @user.accounts.environments.get(params['env_id'])
+    @instance = environment.instances.create(params[:instance])
+    render :rabl, :instance, :format => "json"
+  end
+
   get "/api/v2/environments/:env_id/logs" do
     {
       "logs" => [
