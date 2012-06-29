@@ -5,10 +5,6 @@ describe EY::CloudClient do
     EY::CloudClient.new('asdf', test_ui).token.should == "asdf"
   end
 
-  it "holds a UI" do
-    EY::CloudClient.new('asdf', test_ui).ui.should == test_ui
-  end
-
   describe ".endpoint" do
     after do
       EY::CloudClient.default_endpoint!
