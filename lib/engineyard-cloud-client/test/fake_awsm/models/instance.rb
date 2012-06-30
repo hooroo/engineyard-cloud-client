@@ -6,14 +6,16 @@ class Instance
   property :id,              Serial
   property :name,            String
   property :role,            String
-  property :status,          String
+  property :size,            String
+  property :volume_size,     String
+  property :status,          String, :default => 'starting'
   property :amazon_id,       String
-  property :public_hostname, String
+  property :public_hostname, String, :default => 'default.hostname'
 
   belongs_to :environment
 
   def inspect
-    "#<Instance environment:#{environment.name} role:#{role} name:#{name}>"
+    "#<Instance environment:#{environment.name} role:#{role} status:#{status} hostname:#{public_hostname} name:#{name}>"
   end
 
   def bridge

@@ -6,6 +6,12 @@ describe EY::CloudClient::Environment do
     EY::CloudClient.endpoint = EY::CloudClient::Test::FakeAwsm.uri
   end
 
+  subject do
+    api = scenario_cloud_client "Linked App"
+    result = EY::CloudClient::Environment.resolve(api, 'account_name' => 'main', 'app_name' => 'rails232app', 'environment_name' => 'giblets')
+    result.matches.first
+  end
+
   describe ".all" do
     it "finds all the environments" do
       api = scenario_cloud_client "One App Many Envs"
@@ -57,61 +63,94 @@ describe EY::CloudClient::Environment do
     end
   end
 
-  context "with an environment" do
-    before do
-      api = scenario_cloud_client "Linked App"
-      result = EY::CloudClient::Environment.resolve(api, 'account_name' => 'main', 'app_name' => 'rails232app', 'environment_name' => 'giblets')
-      @env = result.matches.first
-    end
+  context "with instances" do
+    # main subject has instances
 
     it "requests instances when needed" do
-      @env.bridge.role.should == 'app_master'
-      @env.instances.size.should == @env.instances_count
+      subject.bridge.role.should == 'app_master'
+      subject.instances.size.should == subject.instances_count
     end
 
-    it "doesn't request when instances_count is zero" do
-      api = scenario_cloud_client "Linked App Not Running"
-      result = EY::CloudClient::Environment.resolve(api, 'account_name' => 'main', 'app_name' => 'rails232app', 'environment_name' => 'giblets')
-      @env = result.matches.first
-      @env.instances_count.should == 0
-      @env.instances.should == []
+    it "adds a new instance" do
+      instances_count = subject.instances_count
+      begin
+        instance = subject.add_instance({
+          'role' => 'util',
+          'name' => 'SirDigbyChickenCeasar',
+          'size' => 'small',
+          'volume_size' => '5',
+        })
+        subject.instances_count.should == (instances_count + 1)
+        instance.role.should == 'util'
+        instance.name.should == 'SirDigbyChickenCeasar'
+        instance.status.should == 'starting'
+      ensure
+        instance.terminate if instance
+      end
     end
 
     it "selects deploy_to_instances" do
-      @env.deploy_to_instances.map(&:role).should =~ %w[app_master app util util]
+      subject.deploy_to_instances.map(&:role).should =~ %w[app_master app util util]
     end
 
     it "updates the environment" do
-      @env.update.should be_true
+      subject.update.should be_true
     end
 
     it "runs custom recipes" do
-      @env.run_custom_recipes.should be_true
+      subject.run_custom_recipes.should be_true
+    end
+  end
+
+  context "without instances" do
+    subject do
+      api = scenario_cloud_client "Linked App Not Running"
+      result = EY::CloudClient::Environment.resolve(api, 'account_name' => 'main', 'app_name' => 'rails232app', 'environment_name' => 'giblets')
+      result.matches.first
     end
 
+    it "doesn't request instances when instances_count is zero" do
+      subject.instances_count.should == 0
+      subject.instances.should == []
+    end
+
+    it "fails when you try to add an instance" do
+      lambda {
+        subject.add_instance({
+          'role' => 'util',
+          'name' => 'sirdigbychickenceasar',
+        })
+      }.should raise_error
+    end
+  end
+
+  context "recipes" do
     it "uploads recipes" do
-      res = @env.upload_recipes(Pathname.new('spec/support/fixture_recipes.tgz').expand_path.open('rb'))
+      res = subject.upload_recipes(Pathname.new('spec/support/fixture_recipes.tgz').expand_path.open('rb'))
       res.should be_true
     end
 
     it "uploads recipes at path" do
-      res = @env.upload_recipes_at_path(Pathname.new('spec/support/fixture_recipes.tgz').expand_path.to_s)
+      res = subject.upload_recipes_at_path(Pathname.new('spec/support/fixture_recipes.tgz').expand_path.to_s)
       res.should be_true
     end
 
-    it "raises if uploads recipes path doesn't exist" do
+    it "raises if upload recipes path doesn't exist" do
       path = Pathname.new('spec/support/nothing')
       lambda {
-        @env.upload_recipes_at_path(path)
+        subject.upload_recipes_at_path(path)
       }.should raise_error(EY::CloudClient::Error, "Recipes file not found: #{path}")
     end
 
     it "downloads recipes" do
-      @env.download_recipes
+      subject.download_recipes
     end
+  end
 
+
+  context "logs" do
     it "returns logs" do
-      log = @env.logs.first
+      log = subject.logs.first
       log.main.should == 'MAIN LOG OUTPUT'
       log.custom.should == 'CUSTOM LOG OUTPUT'
       log.role.should == 'app_master'

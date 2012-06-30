@@ -1,4 +1,9 @@
-require 'engineyard-cloud-client/models'
+require 'engineyard-cloud-client/resolver_result'
+require 'engineyard-cloud-client/models/account'
+require 'engineyard-cloud-client/models/app'
+require 'engineyard-cloud-client/models/app_environment'
+require 'engineyard-cloud-client/models/instances'
+require 'engineyard-cloud-client/models/log'
 require 'engineyard-cloud-client/models/recipes'
 require 'engineyard-cloud-client/errors'
 
@@ -89,13 +94,19 @@ module EY
       end
 
       def instances
-        @instances ||= request_instances
+        @instances ||= Instances.new(self)
       end
 
-      def boot_instance(instance_attrs)
-        instance = Instance.create(api, instance_attrs.merge('environment_id' => id))
-        add_instance(instance)
-        instance
+      def add_instance(instance_attrs)
+        instances.add(instance_attrs)
+      end
+
+      def no_instances?
+        instances_count.zero?
+      end
+
+      def any_instances?
+        !no_instances?
       end
 
       def account_name
@@ -111,20 +122,15 @@ module EY
       end
 
       def deploy_to_instances
-        instances.select { |inst| inst.has_app_code? }
+        instances.deploy_to
       end
 
       def bridge
-        @bridge ||= instances.detect { |inst| inst.bridge? }
+        instances.bridge
       end
 
       def bridge!(ignore_bad_bridge = false)
-        if bridge.nil?
-          raise NoBridgeError.new(name)
-        elsif !ignore_bad_bridge && bridge.status != "running"
-          raise BadBridgeStatusError.new(bridge.status, EY::CloudClient.endpoint)
-        end
-        bridge
+        instances.bridge!
       end
 
       def update
@@ -179,20 +185,7 @@ module EY
       end
 
       def set_instances(instances_attrs)
-        @instances = load_instances(instances_attrs)
-      end
-
-      def request_instances
-        if instances_count.zero?
-          []
-        else
-          instances_attrs = api.request("/environments/#{id}/instances")["instances"]
-          load_instances(instances_attrs)
-        end
-      end
-
-      def load_instances(instances_attrs)
-        Instance.from_array(api, instances_attrs, 'environment' => self)
+        instances.replace(instances_attrs)
       end
 
       # attrs["cluster_configuration"]["cluster"] can be 'single', 'cluster', or 'custom'
