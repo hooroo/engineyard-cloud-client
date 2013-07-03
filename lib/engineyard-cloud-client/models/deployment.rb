@@ -51,12 +51,20 @@ module EY
       alias deployed_by user_name
       alias deployed_by= user_name=
 
-      def created_at
-        @created_at ||= super && Time.parse(super)
+      def created_at=(cat)
+        if String === cat
+          super Time.parse(cat)
+        else
+          super
+        end
       end
 
-      def finished_at
-        @finished_at ||= super && Time.parse(super)
+      def finished_at=(fat)
+        if String === fat
+          super Time.parse(fat)
+        else
+          super
+        end
       end
 
       def config
@@ -110,14 +118,24 @@ module EY
         put_to_api({:successful => successful, :output => output.read})
       end
 
+      def timeout
+        if finished?
+          raise EY::CloudClient::Error, "Previous deployment is already finished. Aborting."
+        else
+          current_user_name = api.current_user.name
+          self.successful = false
+          err << "!> Marked as timed out by #{current_user_name}"
+          finished
+        end
+      end
+      alias cancel timeout
+
       def finished?
         !finished_at.nil?
       end
 
       def update_with_response(response)
-        response['deployment'].each do |key,val|
-          send("#{key}=", val) if respond_to?("#{key}=")
-        end
+        self.attributes = response['deployment']
         self
       end
 

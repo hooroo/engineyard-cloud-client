@@ -13,18 +13,17 @@ Gem::Specification.new do |s|
   s.summary = "EY Cloud API Client"
   s.description = "This gem connects to the EY Cloud API"
 
-  s.files = Dir.glob("{lib}/**/*") + %w(LICENSE README.md)
+  s.files = Dir.glob("{lib}/**/*") + %w(LICENSE README.md ChangeLog.md)
   s.require_path = 'lib'
 
   s.rubygems_version = %q{1.3.6}
   s.test_files = Dir.glob("spec/**/*")
 
   s.add_dependency('rest-client', '~>1.6.0')
-  s.add_dependency('multi_json')
+  s.add_dependency('multi_json', '~>1.6')
 
   s.add_development_dependency('rspec', '~>2.0')
   s.add_development_dependency('rake')
-  s.add_development_dependency('rdoc')
   s.add_development_dependency('fakeweb')
   s.add_development_dependency('fakeweb-matcher')
   s.add_development_dependency('sinatra')
@@ -36,4 +35,5 @@ Gem::Specification.new do |s|
   s.add_development_dependency('dm-sqlite-adapter')
   s.add_development_dependency('ey_resolver', '~>0.2.1')
   s.add_development_dependency('rabl')
+  s.add_development_dependency('oj')
 end

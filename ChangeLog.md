@@ -4,6 +4,27 @@
 
   *
 
+## v1.0.12 (2013-05-31)
+
+  * Fix for ruby 2.0.0
+
+## v1.0.11 (2013-03-07)
+
+  * Supports Instance#availability\_zone in API response.
+  * Renames Deployment#cancel to Deployment#timeout, though still support using #cancel.
+
+## v1.0.10 (2013-02-20)
+
+  * Provide a test scenario for stuck deployments
+
+## v1.0.9 (2013-02-20)
+
+  * Add the ability to cancel stuck deployments
+
+## v1.0.8 (2013-02-14)
+
+  * Loosen the multi\_json gem version requirement to allow 1.0 compatible security fixes.
+
 ## v1.0.7 (2012-10-25)
 
   * Send serverside\_version to the deployment API when starting a deploy.

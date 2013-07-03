@@ -40,7 +40,7 @@ module EY
         unless String === value
           value = value.pretty_inspect.rstrip                 # remove trailing whitespace
           if value.index("\n")                                # if the inspect is multi-line
-            value.gsub!(/[\r\n]./, "\n" + ' ' * (indent + 2)) # indent it
+            value = value.gsub(/^/, " "*(indent + 2)).lstrip  # indent it
           end
         end
         @output << "#{name.to_s.rjust(indent)}  #{value.rstrip}\n"       # just one newline
@@ -118,9 +118,31 @@ module EY
       rescue RestClient::BadGateway
         raise RequestFailed, "EY Cloud API is temporarily unavailable. Please try again soon."
       rescue RestClient::RequestFailed => e
-        raise RequestFailed, "#{e.message} #{e.response}"
+        raise RequestFailed, "Error: #{parse_error(e)}"
       rescue OpenSSL::SSL::SSLError
         raise RequestFailed, "SSL is misconfigured on your cloud"
+      end
+
+      def parse_error(error)
+        resp = error.response
+        debug("Error", error.message)
+
+        if resp.body.empty?
+          debug("Response", '<<Response body is empty>>')
+          error.message
+        elsif resp.headers[:content_type] =~ /application\/json/
+          begin
+            data = MultiJson.load(resp.body)
+            debug("Response", data)
+            data['message'] ? data['message'] : "#{error.message} #{data.inspect}"
+          rescue MultiJson::DecodeError
+            debug("Response", resp.body)
+            "#{error.message} #{resp.body}"
+          end
+        else
+          debug("Response", resp.body)
+          "#{error.message} #{resp.body}"
+        end
       end
 
       def parse_response(resp)

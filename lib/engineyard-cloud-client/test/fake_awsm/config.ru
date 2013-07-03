@@ -20,6 +20,7 @@ class FakeAwsm < Sinatra::Base
     Scenario::UnlinkedApp.new,
     Scenario::TwoApps.new,
     Scenario::LinkedApp.new,
+    Scenario::StuckDeployment.new,
     Scenario::MultipleAmbiguousAccounts.new,
     Scenario::LinkedAppNotRunning.new,
     Scenario::LinkedAppRedMaster.new,
@@ -90,14 +91,14 @@ class FakeAwsm < Sinatra::Base
   end
 
   delete "/api/v2/keypairs/:id" do
-    keypair = @user.keypairs.get(params['id'])
+    keypair = @user.keypairs.get(params['id'].to_i)
     if keypair
       keypair.destroy
       status 204
       ""
     else
       status 404
-      return {"message" => "Keypair not found with id #{params['id'].inspect}"}.to_json
+      json  "message" => "Keypair not found with id #{params['id'].inspect}"
     end
   end
 
@@ -127,13 +128,13 @@ class FakeAwsm < Sinatra::Base
   end
 
   get "/api/v2/environments/:env_id/instances" do
-    environment = @user.accounts.environments.get(params['env_id'])
+    environment = @user.accounts.environments.get(params['env_id'].to_i)
     @instances = environment.instances
     render :rabl, :instances, :format => "json"
   end
 
   get "/api/v2/environments/:env_id/logs" do
-    {
+    json(
       "logs" => [
         {
           "id" => 'i-12345678',
@@ -142,7 +143,7 @@ class FakeAwsm < Sinatra::Base
           "custom" => "CUSTOM LOG OUTPUT"
         }
       ]
-    }.to_json
+    )
   end
 
   get "/api/v2/environments/:env_id/recipes" do
@@ -190,13 +191,13 @@ class FakeAwsm < Sinatra::Base
   end
 
   post "/api/v2/apps/:app_id/environments/:environment_id/deployments" do
-    app_env = @user.accounts.apps.get(params[:app_id]).app_environments.first(:environment_id => params[:environment_id])
+    app_env = @user.accounts.apps.get(params[:app_id].to_i).app_environments.first(:environment_id => params[:environment_id].to_i)
     @deployment = app_env.deployments.create(params[:deployment])
     render :rabl, :deployment, :format => "json"
   end
 
   post "/api/v2/apps/:app_id/environments/:environment_id/deployments/deploy" do
-    app_env = @user.accounts.apps.get(params[:app_id]).app_environments.first(:environment_id => params[:environment_id])
+    app_env = @user.accounts.apps.get(params[:app_id].to_i).app_environments.first(:environment_id => params[:environment_id].to_i)
     @deployment = app_env.deployments.create(params[:deployment])
     @deployment.deploy
     response['Location'] = "/api/v2/apps/#{params[:app_id]}/environments/#{params[:environment_id]}/deployments/#{@deployment.id}"
@@ -204,19 +205,19 @@ class FakeAwsm < Sinatra::Base
   end
 
   get "/api/v2/apps/:app_id/environments/:environment_id/deployments/last" do
-    app_env = @user.accounts.apps.get(params[:app_id]).app_environments.first(:environment_id => params[:environment_id])
+    app_env = @user.accounts.apps.get(params[:app_id].to_i).app_environments.first(:environment_id => params[:environment_id].to_i)
     @deployment = app_env.deployments.last
     if @deployment
       render :rabl, :deployment, :format => "json"
     else
       status(404)
-      {"message" => "Deployment not found: last"}.to_json
+      json "message" => "Deployment not found: last"
     end
   end
 
   put "/api/v2/apps/:app_id/environments/:environment_id/deployments/:deployment_id/finished" do
-    app_env = @user.accounts.apps.get(params[:app_id]).app_environments.first(:environment_id => params[:environment_id])
-    @deployment = app_env.deployments.get(params[:deployment_id])
+    app_env = @user.accounts.apps.get(params[:app_id].to_i).app_environments.first(:environment_id => params[:environment_id].to_i)
+    @deployment = app_env.deployments.get(params[:deployment_id].to_i)
     @deployment.finished!(params[:deployment])
     render :rabl, :deployment, :format => "json"
   end
@@ -224,10 +225,10 @@ class FakeAwsm < Sinatra::Base
   post "/api/v2/authenticate" do
     user = User.first(:email => params[:email], :password => params[:password])
     if user
-      {"api_token" => user.api_token, "ok" => true}.to_json
+      json  "api_token" => user.api_token, "ok" => true
     else
       status(401)
-      {"ok" => false}.to_json
+      json  "ok" => false
     end
   end
 
